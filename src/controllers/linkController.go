@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"ambassador/src/database"
-	"ambassador/src/middlewares"
 	"ambassador/src/models"
 	"github.com/bxcodec/faker/v3"
 	"github.com/gofiber/fiber/v2"
@@ -38,10 +37,10 @@ func CreateLink(c *fiber.Ctx) error {
 		return err
 	}
 
-	id, _ := middlewares.GetUserId(c)
+	user := c.Context().UserValue("user").(models.User)
 
 	link := models.Link{
-		UserId: id,
+		UserId: user.Id,
 		Code:   faker.Username(),
 	}
 
@@ -57,12 +56,12 @@ func CreateLink(c *fiber.Ctx) error {
 }
 
 func Stats(c *fiber.Ctx) error {
-	id, _ := middlewares.GetUserId(c)
+	user := c.Context().UserValue("user").(models.User)
 
 	var links []models.Link
 
 	database.DB.Find(&links, models.Link{
-		UserId: id,
+		UserId: user.Id,
 	})
 
 	var result []interface{}

@@ -1,29 +1,42 @@
-version: '3.9'
-services:
-  backend:
-    build: .
-    ports:
-      - 8000:8000
-    volumes:
-      - .:/app
-    depends_on:
-      - db
-      - redis
+    version: '3.9'
+    services:
+      backend:
+        build: .
+        ports:
+          - 8000:8000
+        volumes:
+          - .:/app
+        depends_on:
+          - db
+          - redis
+        networks:
+          - monolith
+          - users
 
-  db:
-    image: mysql:5.7.22
-    restart: always
-    environment:
-      MYSQL_DATABASE: ambassador
-      MYSQL_USER: root
-      MYSQL_PASSWORD: root
-      MYSQL_ROOT_PASSWORD: root
-    volumes:
-      - .dbdata:/var/lib/mysql
-    ports:
-      - 33066:3306
+      db:
+        image: mysql:5.7.22
+        restart: always
+        environment:
+          MYSQL_DATABASE: ambassador
+          MYSQL_USER: root
+          MYSQL_PASSWORD: root
+          MYSQL_ROOT_PASSWORD: root
+        volumes:
+          - .dbdata:/var/lib/mysql
+        ports:
+          - 33066:3306
+        networks:
+          - monolith
 
-  redis:
-    image: redis:latest
-    ports:
-      - 6379:6379
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        networks:
+          - monolith
+
+    networks:
+      users:
+        external:
+          name: users
+      monolith:

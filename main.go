@@ -3,6 +3,8 @@ package main
 import (
 	"ambassador/src/database"
 	"ambassador/src/routes"
+	"ambassador/src/services"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
@@ -12,6 +14,7 @@ func main() {
 	database.AutoMigrate()
 	database.SetupRedis()
 	database.SetupCacheChannel()
+	services.Setup()
 
 	app := fiber.New()
 
@@ -21,5 +24,8 @@ func main() {
 
 	routes.Setup(app)
 
-	app.Listen(":8000")
+	err := app.Listen(":8000")
+	if err != nil {
+		fmt.Println("from starting", err)
+	}
 }

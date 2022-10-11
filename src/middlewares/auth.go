@@ -1,70 +1,45 @@
 package middlewares
 
 import (
-	"github.com/dgrijalva/jwt-go"
+	"ambassador/src/models"
+	"ambassador/src/services"
+	"encoding/json"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"strconv"
 	"strings"
-	"time"
 )
 
-const SecretKey = "secret"
-
-type ClaimsWithScope struct {
-	jwt.StandardClaims
-	Scope string
-}
-
 func IsAuthenticated(c *fiber.Ctx) error {
-	cookie := c.Cookies("jwt")
 
-	token, err := jwt.ParseWithClaims(cookie, &ClaimsWithScope{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(SecretKey), nil
-	})
+	isAmbassador := strings.Contains(c.Path(), "/api/ambassador")
 
-	if err != nil || !token.Valid {
+	var scope string
+
+	if isAmbassador {
+		scope = "ambassador"
+	} else {
+		scope = "admin"
+	}
+
+	response, err := services.UserService.Get(fmt.Sprintf("user/%s", scope), c.Cookies("jwt", ""))
+	if err != nil {
 		c.Status(fiber.StatusUnauthorized)
 		return c.JSON(fiber.Map{
 			"message": "unauthenticated",
 		})
 	}
 
-	payload := token.Claims.(*ClaimsWithScope)
-	isAmbassador := strings.Contains(c.Path(), "/api/ambassador")
+	var user models.User
 
-	if (payload.Scope == "admin" && isAmbassador) || (payload.Scope == "ambassador" && !isAmbassador) {
+	json.NewDecoder(response.Body).Decode(&user)
+
+	if user.Id == 0 {
 		c.Status(fiber.StatusUnauthorized)
 		return c.JSON(fiber.Map{
-			"message": "unauthorized",
+			"message": "unauthenticated",
 		})
 	}
 
+	c.Context().SetUserValue("user", user)
 	return c.Next()
-}
-
-func GenerateJWT(id uint, scope string) (string, error) {
-	payload := ClaimsWithScope{}
-	payload.Subject = strconv.Itoa(int(id))
-	payload.ExpiresAt = time.Now().Add(time.Hour * 24).Unix()
-	payload.Scope = scope
-
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, payload).SignedString([]byte(SecretKey))
-}
-
-func GetUserId(c *fiber.Ctx) (uint, error) {
-	cookie := c.Cookies("jwt")
-
-	token, err := jwt.ParseWithClaims(cookie, &ClaimsWithScope{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(SecretKey), nil
-	})
-
-	if err != nil {
-		return 0, err
-	}
-
-	payload := token.Claims.(*ClaimsWithScope)
-
-	id, _ := strconv.Atoi(payload.Subject)
-
-	return uint(id), nil
 }
